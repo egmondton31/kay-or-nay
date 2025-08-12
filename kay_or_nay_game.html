@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kay or Nay — Guess Kay's Video Titles</title>
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#ffb86b;--muted:#94a3b8;--success:#16a34a;--danger:#ef4444}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{background:linear-gradient(180deg,#071028 0%, #0b1530 100%);color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:24px}
+    .app{width:100%;max-width:900px}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:16px;padding:20px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    .center{display:flex;align-items:center;justify-content:center}
+    .title{font-size:24px;font-weight:700;text-align:center;margin:8px 0 16px}
+    .subtitle{color:var(--muted);font-size:13px;text-align:center;margin-bottom:10px}
+    .score-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+    .score{font-size:16px}
+    .buttons{display:flex;gap:12px;justify-content:center;margin-top:12px}
+    button{background:transparent;border:2px solid rgba(255,255,255,0.06);padding:12px 20px;border-radius:12px;color:inherit;cursor:pointer;font-weight:700;letter-spacing:0.6px}
+    button.big{font-size:18px;padding:14px 28px}
+    button.kay{border-color:rgba(22,163,74,0.12)}
+    button.nay{border-color:rgba(239,68,68,0.12)}
+    .feedback{height:36px;text-align:center;margin-top:12px;font-weight:700}
+    .meta{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px;color:var(--muted);font-size:13px}
+    .small{font-size:12px;color:var(--muted)}
+    .endscreen{display:none;flex-direction:column;align-items:center;gap:10px}
+    .progress{height:10px;background:rgba(255,255,255,0.04);border-radius:999px;overflow:hidden}
+    .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),#ff7aa2);width:0%}
+    .controls{display:flex;gap:8px;justify-content:center;margin-top:10px}
+    a.link{color:var(--accent);text-decoration:none}
+    footer{margin-top:14px;text-align:center;color:var(--muted);font-size:12px}
+    /* Responsive */
+    @media (max-width:520px){.title{font-size:20px}.buttons{flex-direction:column}button.big{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="app card">
+    <header>
+      <div style="flex:1">
+        <h1>Kay or Nay</h1>
+        <div class="small">Pick whether the title is a real Kay's Cooking video (Kay) or a made-up one (Nay).</div>
+      </div>
+      <div style="text-align:right">
+        <div class="small">Rounds: <span id="roundCount">10</span></div>
+        <div class="small">Difficulty: <select id="difficulty"><option value="10">10</option><option value="15">15</option><option value="20" selected>20</option></select></div>
+      </div>
+    </header>
+
+    <main>
+      <div class="score-row">
+        <div class="score">Score: <strong id="score">0</strong></div>
+        <div class="small">Correct: <span id="correct">0</span> / <span id="attempts">0</span></div>
+      </div>
+
+      <div class="progress" aria-hidden>
+        <i id="prog"></i>
+      </div>
+
+      <div style="padding:18px 6px;display:flex;flex-direction:column;align-items:center">
+        <div class="title" id="title">Ready?</div>
+        <div class="subtitle">Click <strong>Start</strong> to begin — each correct answer gives +10 points, incorrect -5.</div>
+
+        <div class="buttons">
+          <button id="btnKay" class="big kay">Kay ✅</button>
+          <button id="btnNay" class="big nay">Nay ❌</button>
+        </div>
+
+        <div class="feedback" id="feedback"></div>
+        <div class="meta">
+          <div id="sourceHint"></div>
+          <div id="streak" class="small"></div>
+        </div>
+
+        <div class="controls">
+          <button id="startBtn">Start</button>
+          <button id="skipBtn">Skip (no penalty)</button>
+          <button id="revealBtn">Reveal Answer</button>
+        </div>
+
+        <div class="endscreen" id="endScreen" style="margin-top:18px">
+          <div style="font-size:20px;font-weight:800" id="endTitle"></div>
+          <div class="small" id="endSub"></div>
+          <div style="display:flex;gap:8px">
+            <button id="playAgain">Play again</button>
+            <button id="showAll">Show full answer list</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:12px;display:none" id="answerListCard" class="card">
+        <h3>All Titles & Answers</h3>
+        <ol id="allList"></ol>
+      </div>
+    </main>
+
+    <footer>Made for fun — based on Kay's Cooking channel. Save this file as <code>kay_or_nay.html</code> and open in your browser.</footer>
+  </div>
+
+  <script>
+    // Pool of titles: {title, isKay}
+    const POOL = [
+      {t: 'Spaghetti & Mash', k: true},
+      {t: 'Tuna & Jam Sandwich', k: false},
+      {t: 'Crunchy Ice Cream', k: true},
+      {t: 'Chicken in Cola', k: false},
+      {t: 'Banana & Cheese Curry', k: false},
+      {t: 'Roast Beef Cake', k: false},
+      {t: 'Egg & Mince Pie', k: true},
+      {t: 'Chocolate & Onion Muffins', k: false},
+      {t: 'Lasagna Sandwich', k: true},
+      {t: 'Minced Meat Pancakes', k: false},
+      {t: 'Chips with Gravy & Yogurt', k: false},
+      {t: 'Cornflake Chicken', k: true},
+      {t: 'Sausage & Custard Pie', k: false},
+      {t: 'Pasta with Tomato Soup Sauce', k: true},
+      {t: 'Rice Pudding Pizza', k: false},
+      // extra made-up ones to keep it spicy
+      {t: 'Crispy Milk Toast', k: false},
+      {t: 'Apple Pie Curry', k: false},
+      {t: 'Fried Milkshake', k: true},
+      {t: 'Honeyed Bacon Ice', k: false},
+      {t: 'Spicy Chocolate Noodles', k: true},
+      {t: 'Peanut Butter Kebabs', k: false},
+      {t: 'Mango Mayo Pasta', k: false},
+      {t: 'Tikka Pancake Stack', k: false},
+      {t: 'Cobbler Stuffed Chicken', k: true}
+    ];
+
+    // state
+    let titles = [];
+    let idx = 0;
+    let score = 0;
+    let correct = 0;
+    let attempts = 0;
+    let streak = 0;
+
+    const titleEl = document.getElementById('title');
+    const scoreEl = document.getElementById('score');
+    const correctEl = document.getElementById('correct');
+    const attemptsEl = document.getElementById('attempts');
+    const feedbackEl = document.getElementById('feedback');
+    const prog = document.getElementById('prog');
+    const roundCountEl = document.getElementById('roundCount');
+    const difficultySel = document.getElementById('difficulty');
+    const endScreen = document.getElementById('endScreen');
+    const endTitle = document.getElementById('endTitle');
+    const endSub = document.getElementById('endSub');
+    const answerListCard = document.getElementById('answerListCard');
+    const allList = document.getElementById('allList');
+    const sourceHint = document.getElementById('sourceHint');
+    const streakEl = document.getElementById('streak');
+
+    function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+    function startGame(){
+      const n = parseInt(difficultySel.value,10) || 20;
+      roundCountEl.textContent = n;
+      titles = shuffle(POOL.slice()).slice(0,n);
+      idx = 0; score = 0; correct = 0; attempts = 0; streak = 0;
+      updateStats();
+      answerListCard.style.display='none';
+      endScreen.style.display='none';
+      showTitle();
+    }
+
+    function showTitle(){
+      if(idx >= titles.length){
+        end(); return;
+      }
+      const curr = titles[idx];
+      titleEl.textContent = curr.t;
+      feedbackEl.textContent = '';
+      prog.style.width = Math.round((idx / titles.length) * 100) + '%';
+      sourceHint.textContent = '';
+      streakEl.textContent = streak? `Streak: ${streak}` : '';
+    }
+
+    function answer(isKay){
+      const curr = titles[idx];
+      attempts++;
+      const correctAns = curr.k;
+      let ok = (isKay === correctAns);
+      if(ok){score += 10; correct++; streak++; feedbackEl.textContent = 'Correct! +10'; feedbackEl.style.color = 'var(--success)';}
+      else{score -= 5; streak = 0; feedbackEl.textContent = 'Wrong! -5'; feedbackEl.style.color = 'var(--danger)';}
+      score = Math.max(0,score);
+      idx++;
+      updateStats();
+      // small source hint for flavor (not a real citation)
+      sourceHint.textContent = ok? 'This one really exists on Kay’s channel.' : 'That one sounds suspicious...'
+      setTimeout(showTitle, 900);
+    }
+
+    function skip(){ idx++; showTitle(); }
+
+    function reveal(){
+      const curr = titles[idx];
+      feedbackEl.textContent = curr.k? 'Answer: Kay (real)' : 'Answer: Nay (made-up)';
+      feedbackEl.style.color = curr.k? 'var(--success)' : 'var(--muted)';
+    }
+
+    function updateStats(){
+      scoreEl.textContent = score;
+      correctEl.textContent = correct;
+      attemptsEl.textContent = attempts;
+      prog.style.width = Math.round((idx / titles.length) * 100) + '%';
+    }
+
+    function end(){
+      prog.style.width = '100%';
+      endScreen.style.display = 'flex';
+      endTitle.textContent = `Final score: ${score}`;
+      endSub.textContent = `You got ${correct} correct out of ${titles.length}.`;
+      // prepare full list
+      allList.innerHTML = '';
+      titles.forEach((it,i)=>{
+        const li = document.createElement('li');
+        li.textContent = `${it.t} — ${it.k? 'Kay (real)' : 'Nay (fake)'}`;
+        allList.appendChild(li);
+      });
+      answerListCard.style.display = 'block';
+    }
+
+    // wire buttons
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('btnKay').addEventListener('click', ()=>answer(true));
+    document.getElementById('btnNay').addEventListener('click', ()=>answer(false));
+    document.getElementById('skipBtn').addEventListener('click', skip);
+    document.getElementById('revealBtn').addEventListener('click', reveal);
+    document.getElementById('playAgain').addEventListener('click', startGame);
+    document.getElementById('showAll').addEventListener('click', ()=>{answerListCard.style.display='block';});
+
+    // initialize display
+    updateStats();
+    titleEl.textContent = 'Click Start to play Kay or Nay!';
+  </script>
+</body>
+</html>
